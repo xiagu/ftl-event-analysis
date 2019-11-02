@@ -1,17 +1,19 @@
 import {CommonModule} from '@angular/common';
 import {NgModule} from '@angular/core';
 import {BrowserModule} from '@angular/platform-browser';
+import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 
 import {AppComponent} from './app.component';
 import {sectorDataFactory} from './app_providers';
 import {SECTOR_DATA_TOKEN} from './app_tokens';
-import { SectorStatsComponent } from './sector-stats/sector-stats.component';
+import {SectorStatsComponent} from './sector-stats/sector-stats.component';
 
 @NgModule({
   declarations: [AppComponent, SectorStatsComponent],
   imports: [
     BrowserModule,
     CommonModule,  // AsyncPipe
+    BrowserAnimationsModule,
   ],
   providers: [
     {provide: SECTOR_DATA_TOKEN, useFactory: sectorDataFactory},
