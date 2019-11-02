@@ -1,5 +1,6 @@
 import {CommonModule} from '@angular/common';
 import {NgModule} from '@angular/core';
+import {MatButtonToggleModule} from '@angular/material/button-toggle';
 import {BrowserModule} from '@angular/platform-browser';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 
@@ -13,6 +14,7 @@ import {SectorStatsComponent} from './sector-stats/sector-stats.component';
   imports: [
     BrowserModule,
     CommonModule,  // AsyncPipe
+    MatButtonToggleModule,
     BrowserAnimationsModule,
   ],
   providers: [

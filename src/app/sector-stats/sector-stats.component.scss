@@ -1,3 +1,8 @@
 .sector-names {
   display: flex;
+  flex-wrap: wrap;
+
+  mat-button-toggle {
+    flex-grow: 1;
+  }
 }

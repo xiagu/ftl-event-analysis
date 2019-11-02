@@ -1,6 +1,6 @@
 <h2>Sectors</h2>
-<div class="sector-names">
-  <a *ngFor="let name of sectorNames | async">
+<mat-button-toggle-group class="sector-names">
+  <mat-button-toggle *ngFor="let name of sectorNames | async" [value]="name">
     {{name}}
-  </a>
-</div>
+  </mat-button-toggle>
+</mat-button-toggle-group>
