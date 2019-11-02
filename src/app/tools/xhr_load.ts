@@ -8,7 +8,11 @@ export function xhrLoad(url: string): Promise<XMLDocument> {
 
     xhr.onload = () => {
       if (xhr.status === 200) {
-        resolve(xhr.response);
+        if (!xhr.responseXML) {
+          reject(new Error('Request did not return a document.'));
+        } else {
+          resolve(xhr.responseXML);
+        }
       } else {
         reject(xhr.statusText);
       }
