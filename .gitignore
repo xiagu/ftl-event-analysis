@@ -3,6 +3,7 @@
 # Project-specific
 extracted/
 vanilla/
+src/assets/data/
 
 # compiled output
 /dist
