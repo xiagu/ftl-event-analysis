@@ -1,8 +1,16 @@
+@import '../../styles';
+
 .sector-names {
   display: flex;
   flex-wrap: wrap;
 
-  mat-button-toggle {
+  .mat-button-toggle {
     flex-grow: 1;
+    transition: color ease 280ms, background-color ease 280ms;
+  }
+
+  .mat-button-toggle-checked {
+    background-color: mat-color($ftl-app-primary);
+    color: mat-color($ftl-app-primary, default-contrast);
   }
 }
