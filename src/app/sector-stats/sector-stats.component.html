@@ -1,6 +1,16 @@
 <h2>Sectors</h2>
-<mat-button-toggle-group class="sector-names">
+<!-- Get the selected sector -->
+<mat-button-toggle-group
+    class="sector-names"
+    (change)="sectorChanged($event)">
   <mat-button-toggle *ngFor="let name of sectorNames | async" [value]="name">
     {{name}}
   </mat-button-toggle>
 </mat-button-toggle-group>
+
+<ng-container *ngIf="(selectedSector | async) as selected">
+  <h2>{{selected}} Events</h2>
+  <ul>
+    <li *ngFor="let name of sectorEvents | async">{{name}}</li>
+  </ul>
+</ng-container>
