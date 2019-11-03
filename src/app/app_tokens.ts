@@ -3,6 +3,9 @@ import {Observable} from 'rxjs';
 
 import {Sector} from './shared/models/sector';
 
+export const EVENT_DATA_TOKEN =
+    new InjectionToken<Observable<XMLDocument>>('EVENT_DATA');
+
 export const SECTOR_DATA_TOKEN =
     new InjectionToken<Observable<XMLDocument>>('SECTOR_DATA');
 

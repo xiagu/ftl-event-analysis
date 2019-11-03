@@ -15,12 +15,14 @@
       <th>Event Key</th>
       <th>Expected Count</th>
       <th>P(At least one)</th>
+      <th>Uniques</th>
     </thead>
     <tbody>
       <tr *ngFor="let event of selected.events">
         <td>{{event.keyName}}</td>
         <td>{{event.probability.expectedBeacons | number:'1.0-2'}}</td>
         <td>{{event.probability.wholeSector | percent:'1.0-2'}}</td>
+        <td>{{(eventData | async).get(event.keyName)}}</td>
       </tr>
     </tbody>
   </table>
