@@ -5,8 +5,8 @@ import {BrowserModule} from '@angular/platform-browser';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 
 import {AppComponent} from './app.component';
-import {sectorDataFactory} from './app_providers';
-import {SECTOR_DATA_TOKEN} from './app_tokens';
+import {sectorDataFactory, sectorNameMapFactory} from './app_providers';
+import {SECTOR_DATA_TOKEN, SECTOR_NAME_MAP_TOKEN} from './app_tokens';
 import {SectorStatsComponent} from './sector-stats/sector-stats.component';
 
 @NgModule({
@@ -19,6 +19,7 @@ import {SectorStatsComponent} from './sector-stats/sector-stats.component';
   ],
   providers: [
     {provide: SECTOR_DATA_TOKEN, useFactory: sectorDataFactory},
+    {provide: SECTOR_NAME_MAP_TOKEN, useFactory: sectorNameMapFactory},
   ],
   bootstrap: [AppComponent]
 })

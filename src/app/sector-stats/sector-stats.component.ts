@@ -1,10 +1,15 @@
 import {Component, Inject, OnInit} from '@angular/core';
 import {MatButtonToggleChange} from '@angular/material/button-toggle';
-import {BehaviorSubject, Observable} from 'rxjs';
+import {BehaviorSubject, combineLatest, Observable} from 'rxjs';
 import {map, withLatestFrom} from 'rxjs/operators';
 
-import {SECTOR_DATA_TOKEN} from '../app_tokens';
+import {SECTOR_DATA_TOKEN, SECTOR_NAME_MAP_TOKEN} from '../app_tokens';
 import {FTLTags} from '../ftl_tags';
+
+interface Sector {
+  key: string;
+  name: string;
+}
 
 @Component({
   selector: 'ftl-sector-stats',
@@ -12,14 +17,23 @@ import {FTLTags} from '../ftl_tags';
   styleUrls: ['./sector-stats.component.scss']
 })
 export class SectorStatsComponent {
-  readonly sectorNames: Observable<string[]> = this.sectorData.pipe(
-      map((sectorDoc) => {
-        return Array
-            .from(sectorDoc.querySelectorAll(FTLTags.SECTOR_DESCRIPTION))
-            .map((sector) => sector.getAttribute('name'))
-            .filter((name): name is string => !!name);
-      }),
-  );
+  readonly sectorNames: Observable<Sector[]> =
+      combineLatest([this.sectorData, this.sectorNameMap])
+          .pipe(
+              map(([sectorDoc, nameMap]) => {
+                return Array
+                    .from(
+                        sectorDoc.querySelectorAll(FTLTags.SECTOR_DESCRIPTION))
+                    .map((sector) => sector.getAttribute('name'))
+                    .filter((keyName): keyName is string => !!keyName)
+                    .map((keyName) => ({
+                           key: keyName,
+                           name: nameMap.get(keyName),
+                         }))
+                    // Filter out sectors with empty names.
+                    .filter((sector): sector is Sector => !!sector.name);
+              }),
+          );
 
   /**
    * Has to be a BehaviorSubject so the ngFor inside the ngIf will get a
@@ -44,8 +58,12 @@ export class SectorStatsComponent {
       }),
   );
 
-  constructor(@Inject(SECTOR_DATA_TOKEN) private readonly sectorData:
-                  Observable<XMLDocument>) {}
+  constructor(
+      @Inject(SECTOR_DATA_TOKEN) private readonly sectorData:
+          Observable<XMLDocument>,
+      @Inject(SECTOR_NAME_MAP_TOKEN) private readonly sectorNameMap:
+          Observable<Map<string, string>>,
+  ) {}
 
   sectorChanged(change: MatButtonToggleChange): void {
     this.selectedSector.next(change.value);

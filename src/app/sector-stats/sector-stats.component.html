@@ -3,8 +3,8 @@
 <mat-button-toggle-group
     class="sector-names"
     (change)="sectorChanged($event)">
-  <mat-button-toggle *ngFor="let name of sectorNames | async" [value]="name">
-    {{name}}
+  <mat-button-toggle *ngFor="let sector of sectorNames | async" [value]="sector.key">
+    {{sector.name}}
   </mat-button-toggle>
 </mat-button-toggle-group>
 
