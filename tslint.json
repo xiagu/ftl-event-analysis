@@ -4,5 +4,6 @@
     "exclude": [
       "**/*.json"
     ]
-  }
+  },
+  "no-restricted-globals": ["document"]
 }
