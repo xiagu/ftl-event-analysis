@@ -13,15 +13,13 @@
   <table>
     <thead>
       <th>Event Key</th>
-      <th>Count</th>
-      <th>P(Beacon)</th>
+      <th>Expected Count</th>
       <th>P(At least one)</th>
     </thead>
     <tbody>
       <tr *ngFor="let event of selected.events">
         <td>{{event.keyName}}</td>
-        <td>{{formatCount(event)}}</td>
-        <td>{{event.probability.beacon | percent:'1.0-2'}}</td>
+        <td>{{event.probability.expectedBeacons | number:'1.0-2'}}</td>
         <td>{{event.probability.wholeSector | percent:'1.0-2'}}</td>
       </tr>
     </tbody>

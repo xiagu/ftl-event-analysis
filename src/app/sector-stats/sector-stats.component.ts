@@ -31,10 +31,10 @@ export class SectorStatsComponent {
   /**
    * Format event counts, returning just 1 number if min and max are the same.
    */
-  formatCount(event: SectorEventDefinition): string {
-    if (event.min === event.max) {
-      return String(event.min);
-    }
-    return `${event.min}–${event.max}`;
-  }
+  // formatCount(event: SectorEventDefinition): string {
+  //   if (event.min === event.max) {
+  //     return String(event.min);
+  //   }
+  //   return `${event.min}–${event.max}`;
+  // }
 }

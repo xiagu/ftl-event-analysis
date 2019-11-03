@@ -29,7 +29,7 @@ export interface Sector {
 }
 
 /** Special event definition used by sectors, including min and max counts. */
-export interface SectorEventDefinition extends ParsedEvent {
+export interface SectorEventDefinition extends EventPmf {
   probability: EventProbability;
 }
 
@@ -46,12 +46,13 @@ interface EventPmf {
 
 interface EventProbability {
   /**
+   * TODO: Update
    * Probability that, if you pick one of the beacons in the sector at random,
    * it will have this event. Note this is NOT the same as the chance your next
    * beacon has this event -- beacons aren't independent (because they were
    * pulled from a set rolled at sector gen).
    */
-  beacon: number;
+  expectedBeacons: number;
   /**
    * Probability that you will encounter this event on a run of "average"
    * length through this sector.
@@ -179,7 +180,6 @@ export function Sector(
   console.log(finalThing.map(
       (({pmf}) => Array.from(pmf.values()).reduce((sum, x) => sum + x))));
 
-
   /**
    * PMF for neutral filler events. Initialized with all the mass at 0 events.
    */
@@ -190,6 +190,7 @@ export function Sector(
     neutralEventPmf.set(EXPECTED_BEACON_COUNT - n, mass);
     neutralEventPmf.set(0, neutralEventPmf.get(0)! - mass);
     // Update the mass in the combined joint pmf as well.
+    console.log(`Consolidating mass from ${n} event chance`);
     eventCountPmf.delete(n);
     eventCountPmf.set(
         EXPECTED_BEACON_COUNT,
@@ -204,12 +205,12 @@ export function Sector(
   if (neutralEventPmf.get(0) !== 1) {
     // TODO: Make these constants somewhere and add NEUTRAL_CIVILIAN as well.
     const existingNeutral =
-        eventsWithPmfs.find(({keyName}) => keyName === 'NEUTRAL');
+        finalThing.find(({keyName}) => keyName === 'NEUTRAL');
     if (existingNeutral) {
       existingNeutral.pmf =
           jointProbabilityMassFunction([existingNeutral.pmf, neutralEventPmf]);
     } else {
-      eventsWithPmfs.push({
+      finalThing.push({
         keyName: 'NEUTRAL',
         pmf: neutralEventPmf,
       });
@@ -221,33 +222,25 @@ export function Sector(
     console.log(`${i}: ${format.format(mass)}`);
   });
 
+  const events: SectorEventDefinition[] = finalThing.map((event) => {
+    const expectedBeacons = expectedValue(event.pmf);
+    // This isn't true either. We have to break it down according to the PMF.
+    const beaconsWithoutEvent = EXPECTED_BEACON_COUNT - expectedBeacons;
 
-  // Okay so we have a PMF. Now what?
-  // Keep doing everything... discretely?
+    const pathsThruSector =
+        combinations(EXPECTED_BEACON_COUNT, SECTOR_RUN_LENGTH) as number;
 
-  // Add in the Neutral events for the chances of being below whatever.
-
-  const events: SectorEventDefinition[] = parsedEvents.map((event) => {
-    const beaconsWithEvent = (event.min + event.max) / 2 * scaleDownFactor;
-    const beaconsWithoutEvent = EXPECTED_BEACON_COUNT - beaconsWithEvent;
-    const beacon = beaconsWithEvent * scaleDownFactor / EXPECTED_BEACON_COUNT;
-
-    // We have to do some combination stuff.
-    const pathsThruSector = gamma(EXPECTED_BEACON_COUNT) /
-        (gamma(EXPECTED_BEACON_COUNT - SECTOR_RUN_LENGTH) *
-         gamma(SECTOR_RUN_LENGTH));
-
-    const pathsWithoutEvent = beaconsWithoutEvent === SECTOR_RUN_LENGTH ?
+    const pathsWithoutEvent = beaconsWithoutEvent <= SECTOR_RUN_LENGTH ?
         1 :
-        gamma(beaconsWithoutEvent) /
-            (gamma(beaconsWithoutEvent - SECTOR_RUN_LENGTH) *
-             gamma(SECTOR_RUN_LENGTH));
+        gamma(beaconsWithoutEvent + 1) /
+            (gamma(beaconsWithoutEvent - SECTOR_RUN_LENGTH + 1) *
+             gamma(SECTOR_RUN_LENGTH + 1));
 
     const wholeSector = 1 - pathsWithoutEvent / pathsThruSector;
 
     return {
       ...event,
-      probability: {beacon, wholeSector} as EventProbability,
+      probability: {expectedBeacons, wholeSector} as EventProbability,
     };
   });
 
@@ -290,4 +283,9 @@ function discreteUniformDistribution(
   }
 
   return pmf;
+}
+
+function expectedValue(pmf: Map<number, number>): number {
+  return Array.from(pmf.entries())
+      .reduce((sum, [count, mass]) => sum + count * mass, 0);
 }
