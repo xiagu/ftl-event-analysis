@@ -3,14 +3,14 @@
 <mat-button-toggle-group
     class="sector-names"
     (change)="sectorChanged($event)">
-  <mat-button-toggle *ngFor="let sector of sectorNames | async" [value]="sector.key">
-    {{sector.name}}
+  <mat-button-toggle *ngFor="let sector of sectors | async" [value]="sector">
+    {{sector.textName}}
   </mat-button-toggle>
 </mat-button-toggle-group>
 
 <ng-container *ngIf="(selectedSector | async) as selected">
-  <h2>{{selected}} Events</h2>
+  <h2>{{selected.textName}} Events</h2>
   <ul>
-    <li *ngFor="let name of sectorEvents | async">{{name}}</li>
+    <li *ngFor="let name of selected.eventNames">{{name}}</li>
   </ul>
 </ng-container>

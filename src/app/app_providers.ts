@@ -1,7 +1,8 @@
-import {from, Observable} from 'rxjs';
+import {combineLatest, from, Observable} from 'rxjs';
 import {map, shareReplay} from 'rxjs/operators';
 
 import {FTLTags} from './ftl_tags';
+import {Sector} from './shared/models/sector';
 import {xhrLoad} from './tools/xhr_load';
 
 export function sectorDataFactory(): Observable<XMLDocument> {
@@ -31,5 +32,20 @@ export function sectorNameMapFactory(): Observable<Map<string, string>> {
             return map;
           }),
           shareReplay({bufferSize: 1, refCount: false}),
+      );
+}
+
+/** Synthesize extracted sector information into one useful thing. */
+export function sectorsFactory(
+    data: Observable<XMLDocument>,
+    nameMap: Observable<Map<string, string>>): Observable<Sector[]> {
+  return combineLatest([data, nameMap])
+      .pipe(
+          map(([sectorDoc, nameMap]) => {
+                  return Array
+                      .from(sectorDoc.querySelectorAll(
+                          FTLTags.SECTOR_DESCRIPTION))
+                      .map((sector) => Sector(sector, nameMap))
+                      .filter((sector): sector is Sector => !!sector)}),
       );
 }
