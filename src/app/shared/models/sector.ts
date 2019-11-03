@@ -9,11 +9,14 @@ export interface Sector {
   textName: string;
 
   /** Events possible for beacons. Will undergo drastic refactoring. */
-  events: Array<{
-    keyName: string,
-    min: number,
-    max: number,
-  }>;
+  events: SectorEventDefinition[];
+}
+
+/** Special event definition used by sectors, including min and max counts. */
+export interface SectorEventDefinition {
+  keyName: string;
+  min: number;
+  max: number;
 }
 
 /**
@@ -36,17 +39,17 @@ export function Sector(
   const eventEls =
       Array.from(sectorDescription.querySelectorAll(FTLTags.EVENT));
 
-  // These "events" are different from other usages (eventLists and actual event
-  // definitions).
-  // Extract min and max counts.
-  const events = eventEls
-                     .map((eventEl) => {
-                       const keyName = eventEl.getAttribute('name');
-                       const min = Number(eventEl.getAttribute('min'));
-                       const max = Number(eventEl.getAttribute('max'));
-                       return keyName ? {keyName, min, max} : null;
-                     })
-                     .filter(isDefined());
+  const events: SectorEventDefinition[] =
+      eventEls
+          .map((eventEl) => {
+            const keyName = eventEl.getAttribute('name');
+            const min = Number(eventEl.getAttribute('min'));
+            const max = Number(eventEl.getAttribute('max'));
+            // Skip events with empty names or min and max of both 0.
+            return keyName && Math.max(min, max) > 0 ? {keyName, min, max} :
+                                                       null;
+          })
+          .filter(isDefined());
 
   return {keyName, textName, events};
 }

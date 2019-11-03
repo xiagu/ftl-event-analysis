@@ -3,7 +3,7 @@ import {MatButtonToggleChange} from '@angular/material/button-toggle';
 import {BehaviorSubject, Observable} from 'rxjs';
 
 import {SECTORS_TOKEN} from '../app_tokens';
-import {Sector} from '../shared/models/sector';
+import {Sector, SectorEventDefinition} from '../shared/models/sector';
 
 @Component({
   selector: 'ftl-sector-stats',
@@ -26,5 +26,15 @@ export class SectorStatsComponent {
 
   sectorChanged(change: MatButtonToggleChange): void {
     this.selectedSector.next(change.value);
+  }
+
+  /**
+   * Format event counts, returning just 1 number if min and max are the same.
+   */
+  formatCount(event: SectorEventDefinition): string {
+    if (event.min === event.max) {
+      return String(event.min);
+    }
+    return `${event.min}–${event.max}`;
   }
 }
