@@ -1,4 +1,5 @@
 import {FTLTags} from '../../ftl_tags';
+import {isDefined} from '../operators';
 
 /** Sector record type with consolidated information about an FTL sector. */
 export interface Sector {
@@ -8,7 +9,11 @@ export interface Sector {
   textName: string;
 
   /** Events possible for beacons. Will undergo drastic refactoring. */
-  eventNames: string[];
+  events: Array<{
+    keyName: string,
+    min: number,
+    max: number,
+  }>;
 }
 
 /**
@@ -27,10 +32,21 @@ export function Sector(
   // No error here because we pick up some unused sectors from the XML.
   if (!textName) return null;
 
-  const eventNames =
-      Array.from(sectorDescription.querySelectorAll(FTLTags.EVENT))
-          .map((event) => event.getAttribute('name'))
-          .filter((name): name is string => !!name);
+  // Now, let's compute probabilities!
+  const eventEls =
+      Array.from(sectorDescription.querySelectorAll(FTLTags.EVENT));
 
-  return {keyName, textName, eventNames};
+  // These "events" are different from other usages (eventLists and actual event
+  // definitions).
+  // Extract min and max counts.
+  const events = eventEls
+                     .map((eventEl) => {
+                       const keyName = eventEl.getAttribute('name');
+                       const min = Number(eventEl.getAttribute('min'));
+                       const max = Number(eventEl.getAttribute('max'));
+                       return keyName ? {keyName, min, max} : null;
+                     })
+                     .filter(isDefined());
+
+  return {keyName, textName, events};
 }

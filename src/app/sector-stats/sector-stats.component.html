@@ -11,6 +11,6 @@
 <ng-container *ngIf="(selectedSector | async) as selected">
   <h2>{{selected.textName}} Events</h2>
   <ul>
-    <li *ngFor="let name of selected.eventNames">{{name}}</li>
+    <li *ngFor="let event of selected.events">{{event.keyName}}</li>
   </ul>
 </ng-container>
