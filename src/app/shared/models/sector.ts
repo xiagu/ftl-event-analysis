@@ -28,15 +28,9 @@ export interface Sector {
   events: SectorEventDefinition[];
 }
 
-/** Special event definition used by sectors, including min and max counts. */
+/** Special event definition used by sectors. */
 export interface SectorEventDefinition extends EventPmf {
   probability: EventProbability;
-}
-
-interface ParsedEvent {
-  keyName: string;
-  min: number;
-  max: number;
 }
 
 interface EventPmf {
@@ -46,11 +40,9 @@ interface EventPmf {
 
 interface EventProbability {
   /**
-   * TODO: Update
-   * Probability that, if you pick one of the beacons in the sector at random,
-   * it will have this event. Note this is NOT the same as the chance your next
-   * beacon has this event -- beacons aren't independent (because they were
-   * pulled from a set rolled at sector gen).
+   * Expected value of how many beacons in the sector have this event. Remember,
+   * beacons aren't independent, because they pull from the same pool without
+   * replacement.
    */
   expectedBeacons: number;
   /**
@@ -80,7 +72,8 @@ export function Sector(
   const eventEls =
       Array.from(sectorDescription.querySelectorAll(FTLTags.EVENT));
 
-  const parsedEvents: ParsedEvent[] =
+  /** Parsed events, with min and max converted to uniform PMFs. */
+  const eventsWithPmfs: EventPmf[] =
       eventEls
           .map((eventEl) => {
             const keyName = eventEl.getAttribute('name');
@@ -90,80 +83,59 @@ export function Sector(
             if (!keyName || Math.max(min, max) < 1) return null;
             return {keyName, min, max};
           })
-          .filter(isDefined());
+          .filter(isDefined())
+          .map((event) => {
+            return {
+              keyName: event.keyName,
+              pmf: discreteUniformDistribution(event.min, event.max),
+            };
+          });
 
-  // This is... not exactly wrong, but not the whole story.
-  const bucketEventCount =
-      parsedEvents.reduce((sum, event) => sum + (event.min + event.max) / 2, 0);
-
-  // If there are more events in the bucket than there are beacons to assign
-  // them, then some events won't get chosen. If there are fewer events in the
-  // bucket than beacons, the remainder get filled in with Neutral events.
-  const scaleDownFactor =
-      EXPECTED_BEACON_COUNT / Math.max(bucketEventCount, EXPECTED_BEACON_COUNT)
-
-
-  const eventsWithPmfs: EventPmf[] = parsedEvents.map((event) => {
-    return {
-      keyName: event.keyName,
-      pmf: discreteUniformDistribution(event.min, event.max),
-    };
-  });
-
+  /** Probability mass function for the count of all events in the sector. */
   const eventCountPmf =
       jointProbabilityMassFunction(eventsWithPmfs.map((e) => e.pmf));
-  console.log(`\nJoint event count PMF for ${textName}`);
-  const format = new Intl.NumberFormat('en-Us', {
-    style: 'percent',
-    maximumSignificantDigits: 4,
-  });
 
-  // Compute expected value for events.
-
-
-  const sortedPossibleCounts =
-      Array.from(eventCountPmf.keys()).sort((a, b) => a - b);
-  const maxEventCount = sortedPossibleCounts[sortedPossibleCounts.length - 1];
-  const minEventCount = sortedPossibleCounts[0];
-  const finalThing = eventsWithPmfs.map((event) => {
-    // Adjust PMFs for overcapped thing.
-
-    // I think we do need the pmf of all other events, for each event. womp.
+  /**
+   * Event list with original count pmf (number of events during beacon
+   * assignment) replaced by expected count pmf (the expected number of beacons
+   * with this event in a sector).
+   */
+  const eventsWithExpectedPmf = eventsWithPmfs.map((event) => {
+    /** The joint count PMF for all other events. */
     const otherEventCountPmf = jointPmfWithout(event, eventsWithPmfs);
     const newPmf = new Map<number, number>();
 
-    // So now for this thing, we look at each of its possibilities, and add our
-    // own.
-    otherEventCountPmf.forEach((otherMass, eventCount) => {
+    // For each possible event count before adding this event, add this event's
+    // counts and compute the chance for it to be dropped from the pool.
+    otherEventCountPmf.forEach((otherMass, otherEventCount) => {
       event.pmf.forEach((mass, n) => {
-        const extraEventCount = eventCount + n - EXPECTED_BEACON_COUNT;
+        const extraEventCount = otherEventCount + n - EXPECTED_BEACON_COUNT;
         if (extraEventCount < 1) {
-          // Then everything is fine.
-          newPmf.set(n, (newPmf.get(n) || 0) + mass * otherMass);
+          // No events will be dropped.
+          mapAddDefault(newPmf, n, mass * otherMass);
         } else {
-          // One or more of these events might not make it.
-          for (let removedEvents = 0;
-               removedEvents <= extraEventCount && removedEvents <= n;
-               removedEvents++) {
-            const remainingEvents = n - removedEvents;
+          // Some of these events might not make it.
+          for (let removedCount = 0;
+               removedCount <= extraEventCount && removedCount <= n;
+               removedCount++) {
+            const remainingEvents = n - removedCount;
             // the chance of removing removedEvents of these events...
             const chanceToRemove =
-                eventCount < (EXPECTED_BEACON_COUNT - remainingEvents) ?
+                otherEventCount < (EXPECTED_BEACON_COUNT - remainingEvents) ?
                 0 :
                 number(
                     divide(
                         multiply(
-                            combinations(n, removedEvents),
+                            combinations(n, removedCount),
                             combinations(
-                                eventCount,
+                                otherEventCount,
                                 EXPECTED_BEACON_COUNT - remainingEvents)),
-                        combinations(eventCount + n, EXPECTED_BEACON_COUNT)) as
+                        combinations(
+                            otherEventCount + n, EXPECTED_BEACON_COUNT)) as
                     BigNumber) as number;
 
-            newPmf.set(
-                remainingEvents,
-                (newPmf.get(remainingEvents) || 0) +
-                    chanceToRemove * mass * otherMass);
+            mapAddDefault(
+                newPmf, remainingEvents, chanceToRemove * mass * otherMass);
           }
         }
       });
@@ -174,11 +146,6 @@ export function Sector(
       pmf: newPmf,
     };
   });
-
-  console.log('Real final  thing???');
-  console.log(finalThing);
-  console.log(finalThing.map(
-      (({pmf}) => Array.from(pmf.values()).reduce((sum, x) => sum + x))));
 
   /**
    * PMF for neutral filler events. Initialized with all the mass at 0 events.
@@ -192,37 +159,40 @@ export function Sector(
     // Update the mass in the combined joint pmf as well.
     console.log(`Consolidating mass from ${n} event chance`);
     eventCountPmf.delete(n);
-    eventCountPmf.set(
-        EXPECTED_BEACON_COUNT,
-        (eventCountPmf.get(EXPECTED_BEACON_COUNT) || 0) + mass);
+    mapAddDefault(eventCountPmf, EXPECTED_BEACON_COUNT, mass);
   });
 
+  console.log(`\nJoint event count PMF for ${textName}`);
+  const format = new Intl.NumberFormat('en-Us', {
+    style: 'percent',
+    maximumSignificantDigits: 4,
+  });
   eventCountPmf.forEach((mass, i) => {
     console.log(`${i}: ${format.format(mass)}`);
   });
+  console.log('Neutral event pmf');
+  neutralEventPmf.forEach((mass, i) => {
+    console.log(`${i}: ${format.format(mass)}`);
+  });
 
-  // If there are sometimes filler neutral events.
+
+  // Add any filler neutral events to the final event list.
   if (neutralEventPmf.get(0) !== 1) {
     // TODO: Make these constants somewhere and add NEUTRAL_CIVILIAN as well.
     const existingNeutral =
-        finalThing.find(({keyName}) => keyName === 'NEUTRAL');
+        eventsWithExpectedPmf.find(({keyName}) => keyName === 'NEUTRAL');
     if (existingNeutral) {
       existingNeutral.pmf =
           jointProbabilityMassFunction([existingNeutral.pmf, neutralEventPmf]);
     } else {
-      finalThing.push({
+      eventsWithExpectedPmf.push({
         keyName: 'NEUTRAL',
         pmf: neutralEventPmf,
       });
     }
   }
 
-  console.log('Neutral event pmf');
-  neutralEventPmf.forEach((mass, i) => {
-    console.log(`${i}: ${format.format(mass)}`);
-  });
-
-  const events: SectorEventDefinition[] = finalThing.map((event) => {
+  const events: SectorEventDefinition[] = eventsWithExpectedPmf.map((event) => {
     const expectedBeacons = expectedValue(event.pmf);
     // This isn't true either. We have to break it down according to the PMF.
     const beaconsWithoutEvent = EXPECTED_BEACON_COUNT - expectedBeacons;
@@ -257,14 +227,17 @@ function jointProbabilityMassFunction(pmfs: ReadonlyArray<Map<number, number>>):
     const newPmf = new Map<number, number>();
     pmf.forEach((massA, valueA) => {
       jointPmf.forEach((massB, valueB) => {
-        const existingValue = newPmf.get(valueA + valueB) || 0;
-        newPmf.set(valueA + valueB, existingValue + massA * massB);
+        mapAddDefault(newPmf, valueA + valueB, massA * massB);
       });
     });
     return newPmf;
   }, new Map([[0, 1]]));
 }
 
+/**
+ * Compute the joint probability mass function of all events except the given
+ * one.
+ */
 function jointPmfWithout(
     event: EventPmf, events: readonly EventPmf[]): Map<number, number> {
   const eventsWithout = events.filter((e) => e.keyName !== event.keyName);
@@ -285,7 +258,20 @@ function discreteUniformDistribution(
   return pmf;
 }
 
+/**
+ * Compute the expected value of a probability mass function: the result of
+ * summing the product of all counts and their probability mass.
+ */
 function expectedValue(pmf: Map<number, number>): number {
   return Array.from(pmf.entries())
       .reduce((sum, [count, mass]) => sum + count * mass, 0);
+}
+
+/**
+ * Add value to the entry at the given key. If map doesn't have that key, adds
+ * to given default value.
+ */
+function mapAddDefault(
+    map: Map<number, number>, key: number, value: number, defaultValue = 0) {
+  map.set(key, (map.get(key) || defaultValue) + value);
 }
