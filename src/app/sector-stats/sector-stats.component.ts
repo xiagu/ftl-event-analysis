@@ -20,7 +20,7 @@ export class SectorStatsComponent {
    * With NgRx this would live in the app state, I think? Should also be
    * reflected in a route.
    */
-  private readonly selectedSector = new BehaviorSubject<Sector|null>(null);
+  readonly selectedSector = new BehaviorSubject<Sector|null>(null);
 
   /** Counts of unique events for each top-level sector event. */
   readonly eventData: Observable<Map<string, number>> =
@@ -50,7 +50,7 @@ export class SectorStatsComponent {
 
 
   constructor(
-      @Inject(SECTORS_TOKEN) private readonly sectors: Observable<Sector[]>,
+      @Inject(SECTORS_TOKEN) readonly sectors: Observable<Sector[]>,
       @Inject(EVENT_DATA_TOKEN) private readonly events:
           Observable<XMLDocument>,
   ) {}
